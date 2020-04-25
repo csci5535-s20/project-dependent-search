@@ -6,22 +6,52 @@
 \acmVolume{CSCI 5535}
 \acmNumber{Spring 2020}
 
+\usepackage{xargs}                      % Use more than one optional parameter in a new commands
+\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+\newcommandx{\unsure}[2][1=]{\todo[linecolor=red,backgroundcolor=red!25,bordercolor=red,#1]{#2}}
+\newcommandx{\change}[2][1=]{\todo[linecolor=blue,backgroundcolor=blue!25,bordercolor=blue,#1]{#2}}
+% \newcommandx{\info}[2][1=]{\todo[linecolor=OliveGreen,backgroundcolor=OliveGreen!25,bordercolor=OliveGreen,#1]{#2}}
+% \newcommandx{\improvement}[2][1=]{\todo[linecolor=Plum,backgroundcolor=Plum!25,bordercolor=Plum,#1]{#2}}
+% \newcommandx{\thiswillnotshow}[2][1=]{\todo[disable,#1]{#2}}
+
+\newcommand{\NC}{(\textbf{Needs Citation})}
+
+\newcommand{\term}[1]{\textsf{#1}}
+\newcommand{\type}[1]{\textsf{#1}}
+
+\newcommand{\Carrier}{\term{Carrier}}
+\newcommand{\Universe}{\mathcal{U}}
+\newcommand{\Set}{\type{Set}}
+\newcommand{\Type}{\type{Type}}
+\newcommand{\Boolean}{\term{Boolean}}
+\newcommand{\true}{\term{true}}
+\newcommand{\false}{\term{false}}
+\newcommand{\Number}{\term{Number}}
+\newcommand{\Interp}[1]{\llbracket #1 \rrbracket}
+\newcommand{\?}{\stackrel{?}{\approx}}
+\newcommand{\search}{\term{search}}
+
+\newcommand{\data}[2]{\textsf{data } #1 : #2 \textsf{ where}}
+\newcommand{\record}[2]{\textsf{record } #1 : #2 \textsf{ where}}
+ 
+
 \begin{document}
 
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{The Name of the Title is Hope}
+\title{Embedded Program Search in Agda}
 
 %%
-%% The "author" command and its associated commands are used to define
+%% The "author" command and its associa
+
 %% the authors and their affiliations.
 %% Of note is the shared affiliation of the first two authors, and the
 %% "authornote" and "authornotemark" commands
 %% used to denote shared contribution to the research.
-\author{TBD}
-\email{tbd@colorado.edu}
-\author{TBD}
+\author{Jack Martin}
+\email{John.P.Martin@colorado.edu}
+\author{Michael Dresser}
 \email{tbd@colorado.edu}
 \affiliation{%
   \institution{University of Colorado Boulder}
@@ -32,7 +62,15 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-  TBD
+The problem of Program Search - looking for a function which satisfies a query -
+is one of the more practical tools a developer can use when programming. Search
+tools such as Hoogle provide an entrypoint for a language eco-system, but
+unfortunately often don't accept query information other than types. Here we
+present a search tool for searching over types and examples as well as a general
+framework for doing program search over dependent types. We also provide a
+type-theoretic interpretation of the program search problem as a special case of
+the more general synthesis problem and discuss how this presents a tool for
+furthering the solution to both problems.
 \end{abstract}
 
 %%
@@ -121,13 +159,229 @@ for a term that satisfies the type we gave along with proofs that the provided
 function produces certain results under evaluation. 
 
 
-\section{(Contribution 1)}
+\section{Preliminaries}
 
-\section{(Contribution 2)}
+\todo[inline]{Note for Benno and Evan: The citations are absent for now. We will
+add these for the final paper but decided to leave them out for now until the
+structure of the paper is fixed. The notes for ``Needs citation'' indicate
+positions where we have a reference saved somewhere. It is not an indication
+that we need to still find it. }
+
+\subsection{Universes} One of the advantages of dependent type theories is their
+ability to formalize their own type system and meta-theories within
+themselves(\textbf{Needs citation}). These techniques typically use a structure
+called a \textit{Universe}, which is defined as a type along with an
+interpretation function which takes an element of that type and computes some
+type in the type system. Formally:
+ 
+$$
+\begin{array}{l}
+\record{\Universe}{\Set}\\
+\quad  \begin{array}{rl}
+         \Carrier &: \Set \\
+         \Interp{\_} &: \Carrier \rightarrow \Set
+       \end{array}
+\end{array}
+$$
+
+An example of such a universe containing booleans, natural numbers, and
+functions on either is given here:
+
+$$
+\begin{array}{cc}
+\begin{array}{l}
+\data{\Type}{\Set}\\
+\quad \begin{array}{rl}
+        \textsf{Number} :& \Type\\
+        \textsf{Boolean} :& \Type\\
+        \_\Rightarrow\_ :& \Type \rightarrow \Type \rightarrow \Type
+      \end{array}
+\end{array}
+&
+\begin{array}{l}
+  \Interp{\_}_{\Type} : \Type \rightarrow \Set\\
+  \Interp{\textsf{Number}}_{\Type}     = \mathbb{N}\\
+  \Interp{\textsf{Boolean}}_{\Type}    = \mathbb{B}\\
+  \Interp{t_1 \Rightarrow t_2}_{\Type} \ \, = \Interp{t_1} \rightarrow \Interp{t_2}
+\end{array}
+\end{array}
+$$
+
+Soon, we will define a universe of types for use in program search. We will
+spend most of the rest of the paper defining a suitable $\Carrier$ type that
+respects the various complexities that arise from the presence of dependent
+types. 
+
+\subsection{Simulating First Class Modules}
+
+We will need a coarse simulation of Agda's module structure to store entries for
+search. This will be accomplished by collecting elements of a $\Carrier$ type
+along with the terms they encode into a homogeneous list. The first element will
+be the coded type, and the second element(which depends on the first), will be
+the term of the type that is interpreted from the code:
+
+$$
+\textsf{Module} = \Sigma[ \tau \in \Carrier ] \Interp{ \tau }
+$$
+
+Carrying on with our example universe above, an example module containing some
+common functions and elements:
+
+$$
+\begin{array}{rl}
+  \textsf{example} =& (\Boolean\ ,\ \true)\\
+                  ::& (\Number\ ,\ 5 )\\
+                  ::& (\Boolean\ ,\ \false )\\
+                  ::& (\Number \Rightarrow \Boolean\ ,\ (== 5) )\\
+                  ::&[]
+\end{array}
+$$
+
+
+\section{Searching over Universe Modules}
+
+To support basic type search over these modules we will first have to discuss
+what it means for a query type to ``match'' a type in a collection. This clearly
+introduces the need for a notion of equality over types, which complicates
+matters quickly. Which form of equality of types is appropriate for use in
+program search? Fortunately, there has been some research done on this problem
+and the current accepted equality is isomorphism of types\NC. This
+will equate curried function types to their uncurried counterparts for
+example(i.e. $(A \times B) \rightarrow C \approx A \rightarrow B \rightarrow
+C$).
+
+A problem with using isomorphism over dependent types is that it is a generally
+undecidable problem\NC. The field is currently studying certain decidable
+subsets of the problem thus we opt to maximize flexibility by parameterizing our
+methods over a provided decidable type equality. The problem of type-directed
+program search then just becomes the act of running the decision procedure for
+this equality over the coded-types in our module. Thus, a searchable universe
+can be defined:
+\todo{define isEquiv}
+$$
+\begin{array}{l}
+  \record{\Universe_S}{\Set}\\
+  \quad \begin{array}{ll}
+          U &: \Universe\\
+         \_\approx\_ &: (a\ b\ : \Carrier\ U) \rightarrow \Set\\
+         \approx-\textsf{isEquiv} &: \textsf{IsEquivalence } (\Carrier\ U)\ \_\approx\_\\
+         \_\?\_ &: \forall (a\ b : \Carrier\ U) \rightarrow \textsf{Dec } (a \approx b)
+        \end{array}
+\end{array}
+$$
+
+Now we are ready to define an abstract search procedure for modules of a
+decidable universe. The type of the search function is:
+
+$$
+\begin{array}{l}
+  \search : (u : \Universe_S) \rightarrow (m : \textsf{Module}_u)\rightarrow (c : \Carrier\ (U\ u))
+  \rightarrow \textsf{Maybe }\Interp{c}
+\end{array}
+$$
+
+The procedure takes in a decidable universe $u$, a module of that universe $m$,
+and a coded-type $c$. The output type of the function is possibly an inhabitant
+of the interpretation of $c$ provided that there is in fact one in the module.
+
+\section{A Universe for Searching over Dependent Types} 
+
+Thus far, the formalism we have given should allow any non-dependent program
+to be searched. To add support for programs with type dependencies we will need
+to slightly alter our definition of $\textsf{Module}$. The main idea is that the
+module will need to be simultaneously defined with the interpretation function
+so that types defined in a ``cons'' of a module can depend on the terms found in
+earlier entries. 
+
+The definition of this universe is given in Figure \ref{fig1}.
+\todo[inline]{Note for Benno and Evan: There is not any explanation or elaboration for this
+  part of the formalism yet. There are also a few missing constructors. We were
+  stuck on this for the better part of the last week and just figured out how to
+formalize it last night and it isn't quite finished. In the final paper this
+will be much, much more spelled out over 3-5 pages.}
+
+\begin{figure}[t]
+  $$
+  \begin{array}{cc}
+  \begin{array}{l}
+    \data{\textsf{Module}}{\mathbb{N} \rightarrow \Set}\\
+    \quad \begin{array}{ll}
+            []        &: \textsf{Module } 0\\
+            \_::\_,\_ &: \forall \{ n \}\\
+                      &\rightarrow  (\Gamma : \textsf{Module } n)\\
+                      &\rightarrow  (t : \textsf{TypeCode } n)\\
+                      &\rightarrow  \Interp{ t }_\Gamma \\
+                      &\rightarrow \textsf{Module (suc }  n)
+          \end{array}
+  \end{array}
+                        &
+  \begin{array}{l}
+    \data{\textsf{TypeCode}}{\mathbb{N} \rightarrow \Set}\\
+    \quad
+    \begin{array}{ll}
+      U &: \forall \{ n \} \rightarrow \textsf{TypeCode } n\\
+      \# &: \forall \{ n\ m \} \rightarrow n < m \rightarrow \textsf{TypeCode } m\\
+      \_\Rightarrow\_ &: \forall \{ n \}\ (t_1\ t_2 : \textsf{TypeCode } n)
+                        \rightarrow \textsf{TypeCode } n
+    \end{array}
+
+  \end{array}
+  \end{array}
+  $$
+  $$
+  \begin{array}{l}
+    \Interp{\_}\_ : \forall \{ n \} \rightarrow \textsf{TypeCode } n \rightarrow
+    \textsf{Module } n \rightarrow \Set\\
+    \Interp{ U }_\Gamma = \Set\\
+    \Interp{ t_1 \Rightarrow t_2 }_\Gamma = \Interp{t_1}_\Gamma \rightarrow \Interp{t_2}_\Gamma\\
+    \Interp{ \#\ \textsf{suc-leq-suc ( zero-leq-n)}}_{(\Gamma :: U ,
+    \textsf{term})} = \textsf{term}\\
+    \Interp{ \#\ \textsf{suc-leq-suc ( zero-leq-n)}}_{(\Gamma :: t ,
+    \textsf{term})} = \langle\textsf{Error Case - Impossible under assumptions}\rangle\\
+    \Interp{ \#\ \textsf{suc-leq-suc ( suc-leq-suc } n )}_{(\Gamma :: t ,
+    \textsf{term})} = \Interp{ \#\ \textsf{suc-leq-suc } n }_\Gamma
+  \end{array}
+  $$
+  \caption{The Universe for Search over Dependent Types}
+  \label{fig1}
+\end{figure}
 
 \section{Empirical Evaluation}
 
+\todo[inline]{We were unsure what to include in this section because most of our
+  project was correct by construction. Benno and Evan, we will touch base with
+  you about your thoughts as to what to include here. We brainstormed a little
+  bit but couldn't settle on anything that made too much sense. Hoping that the
+  sections above will be suitable for this week's version of the draft. One idea
+  we had would be to show off an example of why the embedded program search is
+  so powerful/useful. This seems to be a somewhat empirical claim that we could
+  spend some time fleshing out.}
+
 \section{Related Work}
+
+\todo[inline]{Edit: Make changes as Benno suggested}
+
+\paragraph{Program Search} Program Search, or the search of functions in some
+library, has led to such tools as Hoogle, and is the main category that this
+work could be included under. In the past, none of these tools use any
+functional properties or examples to help guide the search. Ours is the first
+tool to provide this functionality.
+
+\textit{draft note: make sure to look into the search programs for other languages.}
+
+\paragraph{Program Synthesis} As was mentioned in Section \# above, program
+search can be viewed as a special case of the more general program synthesis
+problem. It seems hopeful that program search can be later used as a tool in
+program synthesis by treating it as an atomic operation for larger synthesis
+procedures. 
+
+\paragraph{Type Isomorphism} Isomorphisms over types acts as the equivalence
+relation that we use for search in our approach. In reality our approach defines
+a slightly more robust isomorphism relation over types \textit{and} examples.
+This is slightly more powerful than just the types themselves. In future work we
+will look at the theoretical basis for this.
+
+
 
 \section{Conclusion}
 
