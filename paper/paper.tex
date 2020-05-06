@@ -393,7 +393,7 @@ definitions. We will define Module similarly to the type synonym we used above,
 except that it will be mutually defined with the interpretation function. Note
 that for the $\_::\_$ case we provide a module first in the constructor so that
 the entry may depend on it. The entries in the module will be similar to that in
-the example module in Section 4. In the same way the dependent pair
+the example module in Section 4. This is in the same way the dependent pair
 did in the previous Module definition.
 
 The interpretation function is given in Figure \ref{fig:interp}. As explained
@@ -404,10 +404,10 @@ does not go over the length of the list. This is constrained by the indices
 mentioned before. The proof includes with it the position of the type we wish to
 reference and then the interpretation function looks it up via a recursive call. 
 
-To make all of this a bit more concrete, Figure \ref{fig:ex} is an example of a
-module encoded into this typing universe. Here each entry is preceded by its
-type in the coded type system. Note that the references properly index the types
-of their functions or terms.
+More concretely, Figure \ref{fig:ex} is an example of a module encoded into this
+typing universe. Here each entry is preceded by its type in the coded type
+system. Note that the references properly index the types of their functions or
+terms.
 
 \begin{figure}[t]
   \centering
@@ -492,21 +492,21 @@ $$
 
 \section{Empirical Evaluation - Ease of Use}
 
-This formalism thus far is lacking ergonomics. The tool is rather impractical
+This formalism thus far is lacking in ergonomics. The tool is rather impractical
 because the module encoding needs to be written by hand in a coded language that
 relies heavily on numerical indexing. We alleviate this problem with a set of
 programs which both generate the coded modules and the coded queries in
 \textsf{TypeCode}. These two programs hook into the Agda Compiler to parse the
 target library files and generate an auxiliary file containing the coded modules
 and queries. The queries will need to be provided as codes in \textsf{TypeCode}.
-The user provides the syntax valid for Agda and the tool generates the element
-of \textsf{TypeCode} corresponding to the type provided by converting its base
-types to the proper references and function arrows to the coded-arrows.
+The user provides the syntax valid for Agda and the query tool generates the
+element of \textsf{TypeCode} corresponding to the type provided by converting
+its base types to the proper references and function arrows to the coded-arrows.
 
-Along with these programs we have created an integration with emacs to run the
-indexing program whenever emacs saves an Agda file. The query executable can be
+Along with these programs we have created an integration with Emacs to run the
+indexing program whenever Emacs saves an Agda file. The query executable can be
 called using a shortcut or from the list of available emacs commands. We have
-found that the inclusion of these features made the search procedure practical
+found that the inclusion of these features makes the search procedure practical
 for the end-user.
 
 \section{Related Work}
@@ -526,13 +526,13 @@ vein of Generic Haskell \cite{benke2003universes}. This work differs from ours
 in its aim, it mainly attempts to automate the writing of functions such as
 generic map or fold which have a common behavior no matter the structure of the
 type. We attempt to be generic over the types themselves but with a more
-concrete aim. This makes this approach to abstract for our use. Another line of
-work aims at formalizing type theory in type theory using quotient inductive
-types\cite{altenkirch2016type}. This work is closer to our own in that they
-encode their universe mutually in a similar way to our encoding. However this
-work aims at verifying type theory within itself and makes heavy use of Homotopy
-Type Theory\cite{HoTT}. The formalism itself is not quite adequate for our
-purposes as it lacks an mechanism for interpreting its type encodings.
+concrete aim. This approach is too abstract for our use. Another line of work
+aims at formalizing type theory in type theory using quotient inductive
+types\cite{altenkirch2016type}. This work is closer to our own in that it
+encodes the universe mutually. However this work aims at verifying type theory
+within itself and makes heavy use of Homotopy Type Theory\cite{HoTT}. The
+formalism itself is not quite adequate for our purposes as it lacks a mechanism
+for interpreting its type encodings.
 
 \section{Future Work}
 
@@ -544,10 +544,10 @@ interactive mode. This will speed up the generation program as well as eliminate
 the need for separate executables.
 
 Supporting the generation of first class modules from multiple files is also a
-near term improvement that is technically not too difficult. The name spaces
+near-term improvement that is technically not too difficult. The namespaces
 will need to be qualified and import conflicts resolved. This will open up the
 practical use of our tool for searching over a large repository of code such as
-the Agda Standard Library.\cite{bove2009brief} 
+the Agda Standard Library\cite{bove2009brief}.
 
 
 \subsection{Universe for Fully Dependent Types}
@@ -556,16 +556,16 @@ One of the items lacking in this project was a successful encoding of a universe
 for fully dependent types. There was a prototype produced that had some
 deficiencies preventing it from having a sound interpretation function. This
 will be the first follow-up work to be conducted. Completing this universe will
-let the search procedure handle example-based searches such as was show in the
-overview section. This need not stop at examples however. Any decidable property
-over terms/functions can be used in the search process. Thus this formalism will
+let the search procedure handle example-based searches such as was shown in the
+overview section. This need not stop at examples. Any decidable property over
+terms or functions can be used in the search process. Thus this formalism will
 be much stronger than any program search tools currently available for
 functional languages.
 
 \subsection{Program Search as Synthesis}
 
 A key realization motivating this line of research is the relation of program
-search to the more general problem of program synthesis. Program Synthesis is
+search to the more general problem of Program Synthesis. Program Synthesis is
 the task of generating a program which satisfies some specification. Types
 provide one such specification. If the synthesis task is then reduced to
 producing some term of a given query type, the synthesis procedure must produce
@@ -574,11 +574,11 @@ solution to have an AST of size 1 it essentially forces the synthesis problem to
 become program search.
 
 This is not a particularly profound idea. However, when considering program
-search as foundational operation in synthesis procedures it becomes more
-motivating. This was the reasoning behind formalizing search within Agda as
-opposed to as a separate tool. With a function we can compose search with other
+search as a foundational operation in synthesis procedures it becomes more
+interesting. This was the reasoning behind formalizing search within Agda as
+opposed to in a separate tool. With a function we can compose search with other
 functions to build a complex framework for synthesis over dependent types. This
-is our main line of future work in this area.
+is our main line of future work.
 
 
 \section{Conclusion}
